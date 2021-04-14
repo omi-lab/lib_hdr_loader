@@ -65,7 +65,7 @@ namespace
 #define MINRUNLENGTH 4      // Min RLE run length.
 
 //##################################################################################################
-bool oldDecrunch(std::istream& hdrStream, uint8_t* scanline, int len)
+bool oldDecrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& errorMessage)
 {
   int rshift = 0;
   while(len > 0)
@@ -76,7 +76,10 @@ bool oldDecrunch(std::istream& hdrStream, uint8_t* scanline, int len)
     scanline[3] = hdrStream.get();
 
     if(hdrStream.eof())
+    {
+      errorMessage = "Unexpected EOF!";
       return false;
+    }
 
     if(scanline[0] == 1 && scanline[1] == 1 && scanline[2] == 1)
     {
@@ -100,15 +103,15 @@ bool oldDecrunch(std::istream& hdrStream, uint8_t* scanline, int len)
 }
 
 //##################################################################################################
-bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len)
+bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& errorMessage)
 {
   if (len < MINELEN || len > MAXELEN)
-    return oldDecrunch(hdrStream, scanline, len);
+    return oldDecrunch(hdrStream, scanline, len, errorMessage);
 
   if(hdrStream.get() != 2)
   {
     hdrStream.seekg(-1, std::ios::cur);
-    return oldDecrunch(hdrStream, scanline, len);
+    return oldDecrunch(hdrStream, scanline, len, errorMessage);
   }
 
   scanline[1] = hdrStream.get();
@@ -118,7 +121,7 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len)
   {
     scanline[0] = 2;
     scanline[3] = i;
-    return oldDecrunch(hdrStream, scanline + 4, len - 1);
+    return oldDecrunch(hdrStream, scanline + 4, len - 1, errorMessage);
   }
 
   // read each component
@@ -142,7 +145,12 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len)
     }
   }
 
-  return !hdrStream.eof();
+  if(hdrStream.eof())
+  {
+    errorMessage = "Unexpected EOF in decrunch.";
+    return false;
+  }
+  return true;
 }
 
 //##################################################################################################
@@ -229,7 +237,9 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
 {
   auto fail = [&](const auto& msg)
   {
-    errorMessage = msg;
+    if(!errorMessage.empty())
+      errorMessage += '\n';
+    errorMessage += msg;
     return false;
   };
 
@@ -317,7 +327,7 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
   uint8_t* scanline = buffer;
   uint8_t* scanlineMax = scanline + stride*h;
   for(; scanline<scanlineMax; scanline+=stride)
-    if(!decrunch(hdrStream, scanline, w))
+    if(!decrunch(hdrStream, scanline, w, errorMessage))
       return fail("Decompression failed.");
 
   return true;
