@@ -1,2 +1,2 @@
-include ../tp_build/gmake/header_only.pri
+include ../tp_build/gmake/build_a.pri
 
