@@ -327,7 +327,7 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
   uint8_t* scanline = buffer;
   uint8_t* scanlineMax = scanline + stride*h;
   for(; scanline<scanlineMax; scanline+=stride)
-    if(!decrunch(hdrStream, scanline, w, errorMessage))
+    if(!decrunch(hdrStream, scanline, int(w), errorMessage))
       return fail("Decompression failed.");
 
   return true;
@@ -368,7 +368,7 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
   const uint8_t* scanline = buffer;
   const uint8_t* scanlineMax = scanline + stride*h;
   for(; scanline<scanlineMax; scanline+=stride)
-    if(!crunch(hdrStream, scanline, w))
+    if(!crunch(hdrStream, scanline, int(w)))
       return fail("Compression failed.");
 
   return true;
