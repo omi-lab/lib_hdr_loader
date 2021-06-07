@@ -53,6 +53,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <cassert>
 #include <iostream>
 
 namespace lib_hdr_loader
@@ -235,6 +236,8 @@ bool crunch(std::ostream& hdrStream, const uint8_t* scanline, int len)
 //##################################################################################################
 bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t w, size_t h, const HDRHeader&)>& getImageBuffer, std::string& errorMessage)
 {
+  assert(hdrStream.flags() | std::ios_base::binary);
+
   auto fail = [&](const auto& msg)
   {
     if(!errorMessage.empty())
@@ -275,6 +278,7 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
           break;
         }
 
+        std::cout << " '" << str << "' " << i << std::endl;
         return fail("Incorrect header.");
       }
     }
@@ -336,6 +340,8 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
 //##################################################################################################
 bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, size_t h, const HDRHeader& header, std::string& errorMessage)
 {
+  assert(hdrStream.flags() | std::ios_base::binary);
+
   auto fail = [&](const auto& msg)
   {
     errorMessage = msg;
