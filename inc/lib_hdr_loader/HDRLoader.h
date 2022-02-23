@@ -35,12 +35,6 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
 //##################################################################################################
 bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, size_t h, const HDRHeader& header, std::string& errorMessage);
 
-//##################################################################################################
-void rgbeToRGBA(const uint8_t* rgbe, float* rgba, size_t w, size_t h);
-
-//##################################################################################################
-void rgbaToRGBE(const float* rgba, uint8_t* rgbe, size_t w, size_t h);
-
 }
 
 #endif
