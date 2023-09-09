@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <functional>
+#include <cstdint>
 
 namespace lib_hdr_loader
 {
