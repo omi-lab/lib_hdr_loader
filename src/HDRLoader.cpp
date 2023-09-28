@@ -278,7 +278,6 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
           break;
         }
 
-        std::cout << " '" << str << "' " << i << std::endl;
         return fail("Incorrect header.");
       }
     }
