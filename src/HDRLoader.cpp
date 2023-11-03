@@ -128,20 +128,23 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& 
   // read each component
   for(int i = 0; i < 4; i++)
   {
-    for(int j = 0; j < len; )
+    int const len4 = (len << 2) + i;
+    for(int j = i; j < len4;)
     {
       uint8_t code = hdrStream.get();
       if(code > 128) // run
       {
         code &= 127;
         uint8_t val = hdrStream.get();
-        while(code--)
-          scanline[(j++)*4+i] = val;
+        for(auto k=0; k<code; ++k, j+=4)
+          scanline[j]=val;
       }
       else
       {
-        while(code--)	// non-run
-          scanline[(j++)*4+i] = hdrStream.get();
+        char buf[128];
+        hdrStream.read(buf, code);
+        for(auto k=0; k<code; ++k, j+=4)
+          scanline[j]=(uint8_t)buf[k];
       }
     }
   }
@@ -155,7 +158,7 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& 
 }
 
 //##################################################################################################
-bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len)
+bool rle_old(std::ostream& hdrStream, const uint8_t* scanline, int len)
 {
   auto data = [&](int i)
   {
@@ -220,6 +223,92 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len)
 
   return true;
 }
+
+//##################################################################################################
+bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
+{
+  // checking constrain on the length of the scan line 600*127/2 = 38100 pixels
+  // buffer size shall satisfy extreme case when whole line is constant
+  if(len_> 600*127/2)
+    return false;
+
+  char lastSymbol = char(scanline[0]);
+  int longRunPosition = 0;
+  int nonRunPosition = 0;
+  int len4 = len_ << 2;
+  const int MINRUNLENGTH2 = 3 << 2;
+
+  char buff[600];
+
+  for(int cur=0; cur < len4; cur += 4 )
+  {
+    if(lastSymbol == char(scanline[cur])){
+      continue;
+    }
+
+    if((cur - longRunPosition) < MINRUNLENGTH2){
+      longRunPosition = cur;
+      lastSymbol = char(scanline[cur]);
+      continue;
+    }
+
+    if(int shortRunSize = (longRunPosition - nonRunPosition) >> 2 ; shortRunSize > 0 ){
+      int counter = nonRunPosition;
+      do{
+        int packSize = std::min(shortRunSize, 128);
+        buff[0] = char(packSize);
+        for(auto i = 1; i <= packSize; i++, counter+=4)
+          buff[i] = char(scanline[counter]);
+        hdrStream.write(buff, packSize + 1);
+        shortRunSize -= packSize;
+      }while(shortRunSize != 0);
+    }
+
+    if(auto longRunSize = (cur - longRunPosition) >> 2; longRunSize > 0 ){
+      int counter = 0;
+      do{
+        int packSize = std::min(longRunSize, 127);
+        buff[counter++] = char(128 + packSize);
+        buff[counter++] = lastSymbol;
+        longRunSize -= packSize;
+      }while(longRunSize != 0);
+      hdrStream.write(buff, counter);
+    }
+
+    lastSymbol = char(scanline[cur]);
+    longRunPosition = nonRunPosition = cur;
+  }
+
+  // repeating code to process tail of the scan line
+  if((len4 - longRunPosition) < MINRUNLENGTH2)
+        longRunPosition = len4;
+
+  if(int shortRunSize = (longRunPosition - nonRunPosition) >> 2 ; shortRunSize > 0 ){
+    int counter = nonRunPosition;
+    do{
+      int packSize = std::min(shortRunSize, 128);
+      buff[0] = char(packSize);
+      for(auto i = 1; i <= packSize; i++, counter+=4)
+        buff[i] = char(scanline[counter]);
+      hdrStream.write(buff, packSize + 1);
+      shortRunSize -= packSize;
+    }while(shortRunSize != 0);
+  }
+
+  if(auto longRunSize = (len4 - longRunPosition) >> 2; longRunSize > 0 ){
+    int counter = 0;
+    do{
+      int packSize = std::min(longRunSize, 127);
+      buff[counter++] = char(128 + packSize);
+      buff[counter++] = lastSymbol;
+      longRunSize -= packSize;
+    }while(longRunSize != 0);
+    hdrStream.write(buff, counter);
+  }
+
+  return true;
+}
+
 
 //##################################################################################################
 bool crunch(std::ostream& hdrStream, const uint8_t* scanline, int len)
