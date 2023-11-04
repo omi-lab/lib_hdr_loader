@@ -236,9 +236,9 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
   int longRunPosition = 0;
   int nonRunPosition = 0;
   int len4 = len_ << 2;
-  const int MINRUNLENGTH2 = 3 << 2;
+  const int MINRUNLENGTH2 = 3 << 2; // compressing symbol sequence with 3 and more repetitions
 
-  char buff[600];
+  char buf[600];
 
   for(int cur=0; cur < len4; cur += 4 )
   {
@@ -256,10 +256,10 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
       int counter = nonRunPosition;
       do{
         int packSize = std::min(shortRunSize, 128);
-        buff[0] = char(packSize);
+        buf[0] = char(packSize);
         for(auto i = 1; i <= packSize; i++, counter+=4)
-          buff[i] = char(scanline[counter]);
-        hdrStream.write(buff, packSize + 1);
+          buf[i] = char(scanline[counter]);
+        hdrStream.write(buf, packSize + 1);
         shortRunSize -= packSize;
       }while(shortRunSize != 0);
     }
@@ -268,11 +268,11 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
       int counter = 0;
       do{
         int packSize = std::min(longRunSize, 127);
-        buff[counter++] = char(128 + packSize);
-        buff[counter++] = lastSymbol;
+        buf[counter++] = char(128 + packSize);
+        buf[counter++] = lastSymbol;
         longRunSize -= packSize;
       }while(longRunSize != 0);
-      hdrStream.write(buff, counter);
+      hdrStream.write(buf, counter);
     }
 
     lastSymbol = char(scanline[cur]);
@@ -287,10 +287,10 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
     int counter = nonRunPosition;
     do{
       int packSize = std::min(shortRunSize, 128);
-      buff[0] = char(packSize);
+      buf[0] = char(packSize);
       for(auto i = 1; i <= packSize; i++, counter+=4)
-        buff[i] = char(scanline[counter]);
-      hdrStream.write(buff, packSize + 1);
+        buf[i] = char(scanline[counter]);
+      hdrStream.write(buf, packSize + 1);
       shortRunSize -= packSize;
     }while(shortRunSize != 0);
   }
@@ -299,11 +299,11 @@ bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
     int counter = 0;
     do{
       int packSize = std::min(longRunSize, 127);
-      buff[counter++] = char(128 + packSize);
-      buff[counter++] = lastSymbol;
+      buf[counter++] = char(128 + packSize);
+      buf[counter++] = lastSymbol;
       longRunSize -= packSize;
     }while(longRunSize != 0);
-    hdrStream.write(buff, counter);
+    hdrStream.write(buf, counter);
   }
 
   return true;
