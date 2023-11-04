@@ -56,6 +56,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "tp_utils/Parallel.h"
+
 namespace lib_hdr_loader
 {
 
@@ -459,11 +461,44 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
 
   // Write out the RLE RGBE data
   size_t stride = w*4;
-  const uint8_t* scanline = buffer;
-  const uint8_t* scanlineMax = scanline + stride*h;
-  for(; scanline<scanlineMax; scanline+=stride)
-    if(!crunch(hdrStream, scanline, int(w)))
-      return fail("Compression failed.");
+  std::vector<std::stringstream> streams(std::thread::hardware_concurrency());
+  std::atomic<size_t> line{0};
+  std::atomic<size_t> streamCount{0};
+  std::atomic<size_t> max_line_size{0};
+  std::vector<std::tuple<int,int,int>> streamStartEnd(h);
+  bool failFlag = false;
+  tp_utils::parallel([&](auto /*locker*/){
+    auto sc = streamCount++;
+    auto& stream = streams[sc];
+    for(;;){
+      auto i = line++;
+      if(i>=h || failFlag)
+        break;
+      auto start = stream.tellp();
+      auto s = buffer + stride*i;
+      if(!crunch(stream, s, int(w))){
+        failFlag = true;
+        break;
+      }
+      streamStartEnd[i] = {sc, start, stream.tellp()};
+      size_t size = stream.tellp() - start;
+
+      size_t prev_value = max_line_size;
+      while(prev_value < size &&
+            !max_line_size.compare_exchange_weak(prev_value, size));
+    }
+  });
+
+  if(failFlag)
+    return  fail("Compression failed.");
+
+  std::unique_ptr<char[]> buff(new char[max_line_size]);
+  for(auto const& i: streamStartEnd){
+    streams[std::get<0>(i)].seekg(std::get<1>(i));
+    auto size = std::get<2>(i)-std::get<1>(i);
+    streams[std::get<0>(i)].read(buff.get(), size);
+    hdrStream.write(buff.get(), size);
+  }
 
   return true;
 }
