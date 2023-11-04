@@ -461,7 +461,11 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
 
   // Write out the RLE RGBE data
   size_t stride = w*4;
+#ifdef TP_NO_THREADS
+  std::vector<std::stringstream> streams(1);
+#else
   std::vector<std::stringstream> streams(std::thread::hardware_concurrency());
+#endif
   std::atomic<size_t> line{0};
   std::atomic<size_t> streamCount{0};
   std::atomic<size_t> max_line_size{0};
