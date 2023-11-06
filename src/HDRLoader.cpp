@@ -55,6 +55,7 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <atomic>
 
 #include "tp_utils/Parallel.h"
 
@@ -146,7 +147,7 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& 
         char buf[128];
         hdrStream.read(buf, code);
         for(auto k=0; k<code; ++k, j+=4)
-          scanline[j]=(uint8_t)buf[k];
+          scanline[j]=static_cast<uint8_t>(buf[k]);
       }
     }
   }
@@ -159,6 +160,8 @@ bool decrunch(std::istream& hdrStream, uint8_t* scanline, int len, std::string& 
   return true;
 }
 
+#if 0
+// not used
 //##################################################################################################
 bool rle_old(std::ostream& hdrStream, const uint8_t* scanline, int len)
 {
@@ -225,6 +228,7 @@ bool rle_old(std::ostream& hdrStream, const uint8_t* scanline, int len)
 
   return true;
 }
+#endif
 
 //##################################################################################################
 bool rle(std::ostream& hdrStream, const uint8_t* scanline, int len_)
@@ -466,9 +470,9 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
 #else
   std::vector<std::stringstream> streams(std::thread::hardware_concurrency());
 #endif
-  std::atomic<size_t> line{0};
-  std::atomic<size_t> streamCount{0};
-  std::atomic<size_t> max_line_size{0};
+  std::atomic<std::size_t> line {0};
+  std::atomic<std::size_t> streamCount{0};
+  std::atomic<std::size_t> max_line_size{0};
   std::vector<std::tuple<int,int,int>> streamStartEnd(h);
   bool failFlag = false;
   tp_utils::parallel([&](auto /*locker*/){
