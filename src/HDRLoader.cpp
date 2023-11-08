@@ -475,10 +475,12 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
   std::atomic<std::size_t> max_line_size{0};
   std::vector<std::tuple<int,int,int>> streamStartEnd(h);
   bool failFlag = false;
-  tp_utils::parallel([&](auto /*locker*/){
+  tp_utils::parallel([&](auto /*locker*/)
+  {
     auto sc = streamCount++;
     auto& stream = streams[sc];
-    for(;;){
+    for(;;)
+    {
       auto i = line++;
       if(i>=h || failFlag)
         break;
@@ -488,7 +490,7 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
         failFlag = true;
         break;
       }
-      streamStartEnd[i] = {sc, start, stream.tellp()};
+      streamStartEnd[i] = {int(sc), int(start), int(stream.tellp())};
       size_t size = stream.tellp() - start;
 
       size_t prev_value = max_line_size;
