@@ -1,3 +1,8 @@
+
+#if __clang_major__ >= 14
+#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion" // avoids warning in <cassert>
+#endif
+
 // See the original_src folder for the original code.
 //
 // Read HDR code is partially derrived from here:
@@ -51,13 +56,15 @@
 
 #include "lib_hdr_loader/HDRLoader.h"
 
+#include "tp_utils/Parallel.h"
+
 #include <cmath>
 #include <cstring>
 #include <cassert>
 #include <iostream>
 #include <atomic>
 
-#include "tp_utils/Parallel.h"
+#include <stdio.h>
 
 namespace lib_hdr_loader
 {
@@ -331,8 +338,6 @@ bool crunch(std::ostream& hdrStream, const uint8_t* scanline, int len)
 //##################################################################################################
 bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t w, size_t h, const HDRHeader&)>& getImageBuffer, std::string& errorMessage)
 {
-  assert(hdrStream.flags() | std::ios_base::binary);
-
   auto fail = [&](const auto& msg)
   {
     if(!errorMessage.empty())
@@ -411,8 +416,13 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
   size_t h=0;
 
   //This is not complete X and Y can be swapped to rotate the image and both can be either + or - to flip.
-  if(!std::sscanf(reso, "-Y %zu +X %zu", &h, &w))
+#ifdef TP_WIN32
+  if(!sscanf_s(reso, "-Y %zu +X %zu", &h, &w))
     return fail("Failed to parse resolution.");
+#else
+  if(!sscanf(reso, "-Y %zu +X %zu", &h, &w))
+    return fail("Failed to parse resolution.");
+#endif
 
   if(w<1 || w>16384 || h<1 || h>16384)
     return fail("Invalid resolution.");
@@ -434,8 +444,6 @@ bool loadHDRToRGBE(std::istream& hdrStream, const std::function<uint8_t*(size_t 
 //##################################################################################################
 bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, size_t h, const HDRHeader& header, std::string& errorMessage)
 {
-  assert(hdrStream.flags() | std::ios_base::binary);
-
   auto fail = [&](const auto& msg)
   {
     errorMessage = msg;
@@ -486,7 +494,8 @@ bool saveRGBEToHDR(std::ostream& hdrStream, const uint8_t* buffer, size_t w, siz
         break;
       auto start = stream.tellp();
       auto s = buffer + stride*i;
-      if(!crunch(stream, s, int(w))){
+      if(!crunch(stream, s, int(w)))
+      {
         failFlag = true;
         break;
       }
